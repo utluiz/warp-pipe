@@ -2,6 +2,7 @@ apply plugin: 'idea'
 
 subprojects {
     apply plugin: 'java'
+    apply plugin: 'idea'
 
     sourceCompatibility=1.8
     targetCompatibility=1.8
@@ -18,4 +19,5 @@ subprojects {
         testCompile 'junit:junit:4.12'
     }
 
+    compileJava.options.encoding = 'UTF-8'
 }

@@ -1,4 +1,3 @@
 rootProject.name = 'warp-pipe'
 include 'warp-pipe-core'
 include 'web-tests'
-
