@@ -1,6 +1,10 @@
 package org.luizricardo.warppipe;
 
 import org.junit.Test;
+import org.luizricardo.warppipe.fakes.FakeFilterChain;
+import org.luizricardo.warppipe.fakes.FakeFilterConfig;
+import org.luizricardo.warppipe.fakes.FakeHttpServletRequest;
+import org.luizricardo.warppipe.fakes.FakeHttpServletResponse;
 
 import javax.servlet.ServletOutputStream;
 import java.io.IOException;

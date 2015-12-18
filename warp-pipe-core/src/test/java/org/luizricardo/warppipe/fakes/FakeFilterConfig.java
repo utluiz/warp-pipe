@@ -1,4 +1,4 @@
-package org.luizricardo.warppipe;
+package org.luizricardo.warppipe.fakes;
 
 import javax.servlet.FilterConfig;
 import javax.servlet.ServletContext;

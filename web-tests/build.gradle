@@ -1,0 +1,12 @@
+apply plugin: 'war'
+
+dependencies {
+    compile 'org.apache.tomcat:tomcat-catalina:8.0.30'
+    compile 'org.apache.tomcat:tomcat-util:8.0.30'
+    compile 'org.apache.tomcat.embed:tomcat-embed-core:8.0.30'
+    compile 'org.apache.tomcat:tomcat-jsp-api:8.0.30'
+    compile 'org.apache.tomcat:tomcat-jasper:8.0.30'
+    compile 'org.apache.tomcat:tomcat-jasper-el:8.0.30'
+
+    compile 'javax.servlet:javax.servlet-api:3.1.0'
+}
