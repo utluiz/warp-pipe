@@ -1,4 +1,4 @@
-package org.luizricardo.warppipe;
+package org.luizricardo.warppipe.decoder;
 
 
 import org.luizricardo.warppipe.listener.StreamListener;
@@ -7,13 +7,10 @@ import org.luizricardo.warppipe.matcher.StreamMatcher;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
-import java.nio.CharBuffer;
+import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
-import java.nio.charset.CoderResult;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -28,22 +25,7 @@ import java.util.List;
  *     {@link StreamListener} will be executed, where the buffer can be transformed and any operation can be executed.
  * </p>
  */
-public class OutputStreamDecoder extends OutputStream {
-
-    /**
-     * Max character size supported, in bytes.
-     */
-    private static final int MAX_CHAR_SIZE = 4;
-
-    /**
-     * Delegated OutputStream, which will get the transformed output.
-     */
-    private final OutputStream outputStream;
-
-    /**
-     * Charset to decode characters from the byte stream.
-     */
-    private final Charset charset;
+public abstract class StreamDecoder {
 
     /**
      * Buffer which store information about each matcher for the current stream.
@@ -68,55 +50,12 @@ public class OutputStreamDecoder extends OutputStream {
      */
     private final StringBuilder globalStringBuilder;
 
-    /**
-     * Character decoder, which can identify characters from one or more bytes.
-     */
-    private final CharsetDecoder charsetDecoder;
-
-    /**
-     * Store current bytes to be decoded. If a byte is successfully decoded into a character, it'll be stored in the charArray.
-     * When current bytes are partially decoded, they'll remain in the array awaiting for the next byte.
-     */
-    private final byte[] byteArray;
-
-    /**
-     * Current position of byteArray. It'll be incremented when current byteArray cannot be decoded because contains
-     * an incomplete character.
-     */
-    private int byteArrayPosition;
-
-    /**
-     * Stores decoded chars, when they're successfully decoded by the charsetDecoder from the byteArray.
-     */
-    private final char[] charArray;
-
-    /**
-     * Wraps the byte array for use with the charsetDecoder. It'll be resetted on each attempt to decode the byteArray.
-     */
-    private final ByteBuffer byteBuffer;
-
-    /**
-     * Wraps the charArray for use with the charsetDecoder. The charsetDecoder will set the position greater than zero
-     * in this object after decoding one or more characters.
-     */
-    private final CharBuffer charBuffer;
-
-    private OutputStreamDecoder(
-            final OutputStream outputStream,
-            final Charset charset,
+    protected StreamDecoder(
             final StreamMatcher[] matchers,
             final StreamListener[] listeners,
             final int bufferLimit) {
-        this.outputStream = outputStream;
-        this.charset = charset;
         this.bufferLimit = bufferLimit;
-        this.charsetDecoder = charset.newDecoder();
-        //buffers to hold decoded chars
         this.globalStringBuilder = new StringBuilder();
-        this.byteArray = new byte[MAX_CHAR_SIZE]; //supports max 4 bytes characters
-        this.byteBuffer = ByteBuffer.wrap(this.byteArray);
-        this.charArray = new char[2];
-        this.charBuffer = CharBuffer.wrap(this.charArray);
         //create buffers for each matcher
         this.buffers = new MatchingBuffer[matchers.length];
         this.buffersLength = buffers.length;
@@ -125,11 +64,12 @@ public class OutputStreamDecoder extends OutputStream {
         }
     }
 
-    @Override
-    public void write(final int b) throws IOException {
-        //try to decode character; if is not a complete char, return
-        if (!decode(b)) {
-            return;
+    protected void write(final char c) throws IOException {
+        //append char to buffers
+        globalStringBuilder.append(c);
+        //and too al matcher's buffers
+        for (int i = 0; i < buffersLength; i++) {
+            buffers[i].getMatchingString().append(c);
         }
         //store if there's at least one buffer partially matching
         boolean partiallyMatching = false;
@@ -167,9 +107,13 @@ public class OutputStreamDecoder extends OutputStream {
                 writeBufferPartially(globalStringBuilder.length() - fullyMatching.size(), false);
             }
             //process using listener which could transform the content
-            fullyMatching.process();
+            Boolean result = fullyMatching.process();
             //write transformed content
             writeCustomBuffer(fullyMatching);
+            //flush if requested
+            if (result != null && result) {
+                flush();
+            }
             //reset all buffers
             resetBuffers();
         } else if (!partiallyMatching) {
@@ -185,72 +129,29 @@ public class OutputStreamDecoder extends OutputStream {
     }
 
     /**
-     * Writes all buffered content and closes delegated buffer.
-     */
-    @Override
-    public void close() throws IOException {
-        writeAllBuffer();
-        outputStream.close();
-    }
-
-    /**
-     * Flushes delegated OutputStream, but does not write buffer.
-     */
-    @Override
-    public void flush() throws IOException {
-        outputStream.flush();
-    }
-
-    /**
-     * Get the next byte and try to decode the next character.
-     * If it's not a complete character, then it'll be stored for the next call
-     * @param b Byte to decode
-     * @return Returns true when at least one char is decoded and false when none.
-     */
-    private boolean decode(final int b) throws IOException {
-        //add new byte to buffer
-        byteArray[byteArrayPosition++] = (byte) b;
-        //reset buffers positions and limits
-        byteBuffer.position(0);
-        byteBuffer.limit(byteArrayPosition);
-        charBuffer.clear();
-        //try to decode the character
-        final CoderResult coderResult = charsetDecoder.decode(byteBuffer, charBuffer, false);
-        //Underflow means it was able to decode OR is partially decoded
-        if (coderResult.isUnderflow()) {
-            //if char buffer is not empty, it means at least one char was decoded, so try matching it
-            if (charBuffer.position() > 0) {
-                //adds current chars into the buffer
-                globalStringBuilder.append(charArray, 0, charBuffer.position());
-                //and too al matcher's buffers
-                for (int i = 0; i < buffersLength; i++) {
-                    buffers[i].getMatchingString().append(charArray, 0, charBuffer.position());
-                }
-                byteArrayPosition = 0;
-                //should apply matcher
-                return true;
-            } else {
-                //it no characters were decoded, increment position and wait for another byte
-                //unless there the byteArray is full and not more bytes can be stored, then fail miserably
-                if (byteArrayPosition >= MAX_CHAR_SIZE) throw new IOException("This error should never occur.");
-            }
-            return false;
-        } else {
-            //this exception can be thrown in some specific situations when an invalid result is returned from CharsetDecoder.
-            //for instance when a character code is not recognized or when the resulting chars cannot be stored
-            //the charArray because they exceed its size.
-            //for normal encodings like UTF-8 and ISO-8859-1 it should never happen.
-            throw new IOException(String.format("Error while decoding bytes %s encoded in %s. Current buffer is '%s', and CoderResult is %s.",
-                    Arrays.toString(Arrays.copyOf(byteArray, byteArrayPosition)), charset, globalStringBuilder, coderResult));
-        }
-    }
-
-    /**
      * Writes all the global buffer to the output and cleans it.
      */
-    private void writeAllBuffer() throws IOException {
-        outputStream.write(globalStringBuilder.toString().getBytes(charset));
+    protected void writeAllBuffer() throws IOException {
+        write(globalStringBuilder.toString());
         globalStringBuilder.setLength(0);
+    }
+
+    /**
+     * Subclasses should use this method to effectively write to the delegated object.
+     * @param buffer Content to be written.
+     */
+    protected abstract void write(String buffer) throws IOException;
+
+    /**
+     * Force flushing buffered content.
+     */
+    protected abstract void flush() throws IOException;
+
+    /**
+     * Retrieves current buffer, for inspection
+     */
+    protected StringBuilder currentBuffer() {
+        return globalStringBuilder;
     }
 
     /**
@@ -258,7 +159,7 @@ public class OutputStreamDecoder extends OutputStream {
      * It'll be called when the beginning of the buffer is not relevant for any individual buffer anymore.
      */
     private void writeBufferPartially(final int length, boolean delete) throws IOException {
-        outputStream.write(globalStringBuilder.subSequence(0, length).toString().getBytes(charset));
+        write(globalStringBuilder.subSequence(0, length).toString());
         if (delete) globalStringBuilder.delete(0, length);
     }
 
@@ -266,7 +167,7 @@ public class OutputStreamDecoder extends OutputStream {
      * Writes an individual buffer to the output.
      */
     private void writeCustomBuffer(final MatchingBuffer matchingBuffer) throws IOException {
-        outputStream.write(matchingBuffer.getMatchingString().toString().getBytes(charset));
+        write(matchingBuffer.getMatchingString().toString());
     }
 
     /**
@@ -283,7 +184,7 @@ public class OutputStreamDecoder extends OutputStream {
      * Buffer for a given pair of matcher and listener.
      * Characters will be buffered while it matches the global buffer.
      */
-    private static class MatchingBuffer {
+    protected static class MatchingBuffer {
         private final StreamMatcher streamMatcher;
         private final StreamListener streamListener;
         private final StringBuilder matchingString;
@@ -311,8 +212,8 @@ public class OutputStreamDecoder extends OutputStream {
         /**
          * Process listener using matched buffer.
          */
-        void process() {
-            streamListener.process(matchingString);
+        Boolean process() {
+            return streamListener.process(matchingString);
         }
 
         /**
@@ -331,34 +232,39 @@ public class OutputStreamDecoder extends OutputStream {
     }
 
     /**
-     * Builder class for {@link OutputStreamDecoder}.
+     * Base builder class for decoders.
      */
-    public static class Builder {
-        private OutputStream outputStream;
-        private Charset charset;
-        private int bufferLimit;
-        private List<StreamMatcher> matchers = new ArrayList<>();
-        private List<StreamListener> listeners = new ArrayList<>();
+    public static abstract class Builder<T> {
+        protected int bufferLimit;
+        protected List<StreamMatcher> matchers = new ArrayList<>();
+        protected List<StreamListener> listeners = new ArrayList<>();
 
         /**
-         * Start building an instance with required parameters.
+         * Start building an instance of {@link StreamDecoderOutputStream} with required parameters.
          * @param outputStream Delegated output where bytes will be eventually written.
          * @param charset Encoding to decode characters. DOES NOT support BOM (Byte Order Mark).
          */
-        public static Builder create(OutputStream outputStream, Charset charset) {
-            return new Builder(outputStream, charset);
+        public static Builder<StreamDecoderOutputStream> forOutputStream(OutputStream outputStream, Charset charset) {
+            return new StreamDecoderOutputStream.Builder(outputStream, charset);
         }
 
-        private Builder(OutputStream outputStream, Charset charset) {
-            this.outputStream = outputStream;
-            this.charset = charset;
+        /**
+         * Start building an instance of {@link StreamDecoderWriter} with required parameters.
+         * @param writer Delegated output where bytes will be eventually written.
+         */
+        public static Builder<StreamDecoderWriter> forWriter(Writer writer) {
+            return new StreamDecoderWriter.Builder(writer);
+        }
+
+
+        protected Builder() {
             this.bufferLimit = 64;
         }
 
         /**
          * Binds a matcher and a listener, i.e., when some content matches the corresponding listener will be executed.
          */
-        public Builder bind(StreamMatcher matcher, StreamListener listener) {
+        public Builder<T> bind(StreamMatcher matcher, StreamListener listener) {
             this.matchers.add(matcher);
             this.listeners.add(listener);
             return this;
@@ -367,7 +273,7 @@ public class OutputStreamDecoder extends OutputStream {
         /**
          * Sets the maximum number of characters that will be stored in the buffers. Default is 64.
          */
-        public Builder bufferLimit(int bufferLimit) {
+        public Builder<T> bufferLimit(int bufferLimit) {
             this.bufferLimit = bufferLimit;
             return this;
         }
@@ -375,12 +281,6 @@ public class OutputStreamDecoder extends OutputStream {
         /**
          * Build an instance with the current settings.
          */
-        public OutputStreamDecoder build() {
-            return new OutputStreamDecoder(outputStream, charset,
-                    matchers.toArray(new StreamMatcher[matchers.size()]),
-                    listeners.toArray(new StreamListener[listeners.size()]),
-                    bufferLimit);
-        }
+        public abstract T build();
     }
-
 }

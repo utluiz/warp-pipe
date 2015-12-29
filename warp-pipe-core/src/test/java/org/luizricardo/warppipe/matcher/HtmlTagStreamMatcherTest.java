@@ -3,8 +3,10 @@ package org.luizricardo.warppipe.matcher;
 
 import org.junit.Test;
 
-import static org.junit.Assert.assertEquals;
-import static org.luizricardo.warppipe.matcher.MatchingStatus.*;
+import static org.luizricardo.warppipe.matcher.MatchingStatus.FIRST;
+import static org.luizricardo.warppipe.matcher.MatchingStatus.FULLY;
+import static org.luizricardo.warppipe.matcher.MatchingStatus.NONE;
+import static org.luizricardo.warppipe.matcher.MatchingStatus.PARTIALLY;
 
 
 public class HtmlTagStreamMatcherTest {

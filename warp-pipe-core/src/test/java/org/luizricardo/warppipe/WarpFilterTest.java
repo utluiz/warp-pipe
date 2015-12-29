@@ -26,7 +26,7 @@ public class WarpFilterTest {
 
     @Test
     public void simpleHtmlFilter() throws Exception {
-        filter.init(new FakeFilterConfig().param("matcher", "org.luizricardo.warppipe.HiBodyMatcher"));
+        filter.init(new FakeFilterConfig().param("matchers", "org.luizricardo.warppipe.HiBodyMatcher"));
         doFilterWithOutputStream("<body>bla</body>");
         assertEquals("<body>bla<hi/></body>", new String(response.getOutput().toByteArray(), StandardCharsets.UTF_8));
     }
