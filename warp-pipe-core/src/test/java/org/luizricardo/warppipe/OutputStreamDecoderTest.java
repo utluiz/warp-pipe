@@ -12,11 +12,11 @@ import java.nio.charset.StandardCharsets;
 
 import static org.hamcrest.CoreMatchers.is;
 
-public class HtmlOutputStreamParserTest {
+public class OutputStreamDecoderTest {
 
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
     TextStreamMatcher matcher = new TextStreamMatcher("bla", true);
-    HtmlOutputStreamParser.Builder builder = HtmlOutputStreamParser.Builder.create(baos, StandardCharsets.UTF_8);
+    OutputStreamDecoder.Builder builder = OutputStreamDecoder.Builder.create(baos, StandardCharsets.UTF_8);
 
     @Test
     public void simplestSanityCheck() throws Exception {

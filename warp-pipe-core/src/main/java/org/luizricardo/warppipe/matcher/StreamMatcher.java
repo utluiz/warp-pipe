@@ -1,8 +1,10 @@
 package org.luizricardo.warppipe.matcher;
 
+import org.luizricardo.warppipe.OutputStreamDecoder;
+
 /**
  * A StreamMatcher is an interface designed to identify text from a stream os characters, to be used by
- * {@link org.luizricardo.warppipe.HtmlOutputStreamParser}.
+ * {@link OutputStreamDecoder}.
  * It'll receive a partial increading buffer of characters and should return a status of how it matches.
  * <p>
  *     Firstly, it'll get a buffer with one single character. If this matcher recognizes that character but it's not yet

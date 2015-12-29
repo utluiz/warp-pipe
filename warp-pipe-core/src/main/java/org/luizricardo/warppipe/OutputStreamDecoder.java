@@ -28,7 +28,7 @@ import java.util.List;
  *     {@link StreamListener} will be executed, where the buffer can be transformed and any operation can be executed.
  * </p>
  */
-public class HtmlOutputStreamParser extends OutputStream {
+public class OutputStreamDecoder extends OutputStream {
 
     /**
      * Max character size supported, in bytes.
@@ -101,7 +101,7 @@ public class HtmlOutputStreamParser extends OutputStream {
      */
     private final CharBuffer charBuffer;
 
-    private HtmlOutputStreamParser(
+    private OutputStreamDecoder(
             final OutputStream outputStream,
             final Charset charset,
             final StreamMatcher[] matchers,
@@ -331,7 +331,7 @@ public class HtmlOutputStreamParser extends OutputStream {
     }
 
     /**
-     * Builder class for {@link HtmlOutputStreamParser}.
+     * Builder class for {@link OutputStreamDecoder}.
      */
     public static class Builder {
         private OutputStream outputStream;
@@ -375,8 +375,8 @@ public class HtmlOutputStreamParser extends OutputStream {
         /**
          * Build an instance with the current settings.
          */
-        public HtmlOutputStreamParser build() {
-            return new HtmlOutputStreamParser(outputStream, charset,
+        public OutputStreamDecoder build() {
+            return new OutputStreamDecoder(outputStream, charset,
                     matchers.toArray(new StreamMatcher[matchers.size()]),
                     listeners.toArray(new StreamListener[listeners.size()]),
                     bufferLimit);
