@@ -13,10 +13,10 @@ public class StreamDecoderWriterTest extends BaseStreamDecoderTests {
 
     @Before
     public void setup() {
-        builder = StreamDecoder.Builder.forWriter(writer);
+        builder = StreamDecoder.forWriter(writer);
     }
 
-    void writeBytesAndCheckResult(StreamDecoder.Builder builder, String text, String expected) throws Exception {
+    void writeBytesAndCheckResult(StreamDecoderBuilder builder, String text, String expected) throws Exception {
         StreamDecoderWriter target = (StreamDecoderWriter) builder.build();
         for (char c : text.toCharArray()) {
             target.write(c);

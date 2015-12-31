@@ -11,7 +11,7 @@ import static org.luizricardo.warppipe.matcher.MatchingStatus.PARTIALLY;
 
 public class HtmlTagStreamMatcherTest {
 
-    HtmlTagStreamMatcher matcher = new HtmlTagStreamMatcher("table");
+    HtmlTagStreamMatcher matcher = HtmlTagStreamMatcher.forTag("table");
 
     @Test
     public void matchSimple() {
@@ -73,7 +73,7 @@ public class HtmlTagStreamMatcherTest {
 
     @Test
     public void matchMultiByteCharacters() {
-        TextStreamMatcherTest.performAndAssertMatching("<bigpipe é=\"é\"/>", new HtmlTagStreamMatcher("bigpipe"),
+        TextStreamMatcherTest.performAndAssertMatching("<bigpipe é=\"é\"/>", HtmlTagStreamMatcher.forTag("bigpipe"),
                 FIRST, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY,
                 PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, PARTIALLY, FULLY);
     }

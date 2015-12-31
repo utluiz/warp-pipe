@@ -1,6 +1,7 @@
 package org.luizricardo.warppipe.decoder;
 
 
+import org.luizricardo.warppipe.listener.MatchingWriter;
 import org.luizricardo.warppipe.listener.StreamListener;
 import org.luizricardo.warppipe.matcher.StreamMatcher;
 
@@ -80,7 +81,7 @@ public class StreamDecoderOutputStream extends OutputStream {
      */
     private final CharBuffer charBuffer;
 
-    private StreamDecoderOutputStream(
+    protected StreamDecoderOutputStream(
             final OutputStream outputStream,
             final Charset charset,
             final StreamMatcher[] matchers,
@@ -88,17 +89,8 @@ public class StreamDecoderOutputStream extends OutputStream {
             final int bufferLimit) {
         this.outputStream = outputStream;
         this.charset = charset;
-        this.decoder = new StreamDecoder(matchers, listeners, bufferLimit) {
-            @Override
-            protected void write(String buffer) throws IOException {
-                outputStream.write(buffer.getBytes(charset));
-            }
-
-            @Override
-            protected void flush() throws IOException {
-                outputStream.flush();
-            }
-        };
+        //decoder implementation that delegates to the output stream
+        this.decoder = new StreamDecoder(MatchingWriter.forOutputStream(outputStream, charset), matchers, listeners, bufferLimit);
         //byte to character decoder
         this.charsetDecoder = charset.newDecoder();
         //buffers to hold decoded chars
@@ -164,24 +156,4 @@ public class StreamDecoderOutputStream extends OutputStream {
         outputStream.flush();
     }
 
-    /**
-     * Builder class for {@link StreamDecoderOutputStream}.
-     */
-    protected static class Builder extends StreamDecoder.Builder<StreamDecoderOutputStream> {
-        private OutputStream outputStream;
-        private Charset charset;
-
-        protected Builder(OutputStream outputStream, Charset charset) {
-            this.outputStream = outputStream;
-            this.charset = charset;
-        }
-
-        @Override
-        public StreamDecoderOutputStream build() {
-            return new StreamDecoderOutputStream(outputStream, charset,
-                    matchers.toArray(new StreamMatcher[matchers.size()]),
-                    listeners.toArray(new StreamListener[listeners.size()]),
-                    bufferLimit);
-        }
-    }
 }

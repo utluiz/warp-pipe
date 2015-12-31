@@ -12,7 +12,7 @@ import static org.luizricardo.warppipe.matcher.MatchingStatus.PARTIALLY;
 
 public class TextStreamMatcherTest {
 
-    TextStreamMatcher matcher = new TextStreamMatcher("bla", true);
+    TextStreamMatcher matcher = TextStreamMatcher.forText("bla", true);
 
     @Test
     public void matchSimple() {
@@ -51,25 +51,25 @@ public class TextStreamMatcherTest {
 
     @Test
     public void matchMultiByteCharacters() {
-        performAndAssertMatching("blábla", new TextStreamMatcher("blá", true),
+        performAndAssertMatching("blábla", TextStreamMatcher.forText("blá", true),
                 FIRST, PARTIALLY, FULLY, FIRST, PARTIALLY, NONE);
     }
 
     @Test
     public void matchMoreMultiByteCharacters() {
-        performAndAssertMatching("bláéblá", new TextStreamMatcher("blá", true),
+        performAndAssertMatching("bláéblá", TextStreamMatcher.forText("blá", true),
                 FIRST, PARTIALLY, FULLY, NONE, FIRST, PARTIALLY, FULLY);
     }
 
     @Test
     public void matchCaseInsensitive() {
-        performAndAssertMatching("bláéblá", new TextStreamMatcher("BlÁ", false),
+        performAndAssertMatching("bláéblá", TextStreamMatcher.forText("BlÁ", false),
                 FIRST, PARTIALLY, FULLY, NONE, FIRST, PARTIALLY, FULLY);
     }
 
     @Test
     public void matchSingleCharacter() {
-        performAndAssertMatching("uuxuxX", new TextStreamMatcher("X", false),
+        performAndAssertMatching("uuxuxX", TextStreamMatcher.forText("X", false),
                 NONE, NONE, FULLY, NONE, FULLY, FULLY);
     }
 

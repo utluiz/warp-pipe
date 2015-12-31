@@ -14,11 +14,11 @@ public class StreamDecoderOutputStreamTest extends BaseStreamDecoderTests {
 
     @Before
     public void setup() {
-        builder = StreamDecoder.Builder.forOutputStream(baos, StandardCharsets.UTF_8);
+        builder = StreamDecoder.forOutputStream(baos, StandardCharsets.UTF_8);
     }
 
 
-    void writeBytesAndCheckResult(StreamDecoder.Builder builder, String text, String expected) throws Exception {
+    void writeBytesAndCheckResult(StreamDecoderBuilder builder, String text, String expected) throws Exception {
         StreamDecoderOutputStream os = (StreamDecoderOutputStream) builder.build();
         final byte[] bytes = text.getBytes(StandardCharsets.UTF_8);
         for (byte aByte : bytes) {

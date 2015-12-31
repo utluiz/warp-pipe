@@ -15,10 +15,19 @@ public class TextStreamMatcher implements StreamMatcher {
     private final boolean caseSensitive;
     private final int textLength;
 
-    public TextStreamMatcher(final String text, boolean caseSensitive) {
+    private TextStreamMatcher(final String text, boolean caseSensitive) {
         this.text = text;
         this.caseSensitive = caseSensitive;
         this.textLength = text.length();
+    }
+
+    /**
+     * Builds a {@link TextStreamMatcher}.
+     * @param text Text to match.
+     * @param caseSensitive Will ignore case when false.
+     */
+    public static TextStreamMatcher forText(final String text, boolean caseSensitive) {
+        return new TextStreamMatcher(text, caseSensitive);
     }
 
     @Override
@@ -34,7 +43,11 @@ public class TextStreamMatcher implements StreamMatcher {
         }
     }
 
-    private boolean compare(String s1, String s2) {
+    /**
+     * Compare considering case-sensitivity options
+     */
+    private boolean compare(final String s1, final String s2) {
         return caseSensitive ? s1.equals(s2) : s1.equalsIgnoreCase(s2);
     }
+
 }

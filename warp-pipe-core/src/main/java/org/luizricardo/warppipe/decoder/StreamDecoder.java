@@ -1,6 +1,7 @@
 package org.luizricardo.warppipe.decoder;
 
 
+import org.luizricardo.warppipe.listener.MatchingWriter;
 import org.luizricardo.warppipe.listener.StreamListener;
 import org.luizricardo.warppipe.matcher.MatchingStatus;
 import org.luizricardo.warppipe.matcher.StreamMatcher;
@@ -10,8 +11,6 @@ import java.io.OutputStream;
 import java.io.Writer;
 import java.nio.charset.Charset;
 import java.nio.charset.CharsetDecoder;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * A decorated OutputStream capable of decoding characters from the stream of bytes written to it,
@@ -25,7 +24,12 @@ import java.util.List;
  *     {@link StreamListener} will be executed, where the buffer can be transformed and any operation can be executed.
  * </p>
  */
-public abstract class StreamDecoder {
+public class StreamDecoder {
+
+    /**
+     * Output which will delegate data to the actual output.
+     */
+    private MatchingWriter matchingWriter;
 
     /**
      * Buffer which store information about each matcher for the current stream.
@@ -50,26 +54,48 @@ public abstract class StreamDecoder {
      */
     private final StringBuilder globalStringBuilder;
 
+    /**
+     * Start building an instance of {@link StreamDecoderOutputStream} with required parameters.
+     * @param outputStream Delegated output where bytes will be eventually written.
+     * @param charset Encoding to decode characters. DOES NOT support BOM (Byte Order Mark).
+     */
+    public static StreamDecoderBuilder<StreamDecoderOutputStream> forOutputStream(OutputStream outputStream, Charset charset) {
+        return new StreamDecoderBuilder.OutputStreamBuilder(outputStream, charset);
+    }
+
+    /**
+     * Start building an instance of {@link StreamDecoderWriter} with required parameters.
+     * @param writer Delegated output where bytes will be eventually written.
+     */
+    public static StreamDecoderBuilder<StreamDecoderWriter> forWriter(Writer writer) {
+        return new StreamDecoderBuilder.WriterBuilder(writer);
+    }
+
     protected StreamDecoder(
+            final MatchingWriter matchingWriter,
             final StreamMatcher[] matchers,
             final StreamListener[] listeners,
             final int bufferLimit) {
+        this.matchingWriter = matchingWriter;
         this.bufferLimit = bufferLimit;
         this.globalStringBuilder = new StringBuilder();
         //create buffers for each matcher
         this.buffers = new MatchingBuffer[matchers.length];
         this.buffersLength = buffers.length;
         for (int i = 0; i < buffersLength; i++) {
-            buffers[i] = new MatchingBuffer(matchers[i], listeners[i]);
+            buffers[i] = MatchingBuffer.create(matchers[i], listeners[i], matchingWriter);
         }
     }
 
-    protected void write(final char c) throws IOException {
+    /**
+     * Handled a new char, adding it to the buffers and checking all matchers.
+     */
+    public void write(final char c) throws IOException {
         //append char to buffers
         globalStringBuilder.append(c);
         //and too al matcher's buffers
         for (int i = 0; i < buffersLength; i++) {
-            buffers[i].getMatchingString().append(c);
+            buffers[i].append(c);
         }
         //store if there's at least one buffer partially matching
         boolean partiallyMatching = false;
@@ -106,14 +132,10 @@ public abstract class StreamDecoder {
                 //write those previous characters
                 writeBufferPartially(globalStringBuilder.length() - fullyMatching.size(), false);
             }
-            //process using listener which could transform the content
-            Boolean result = fullyMatching.process();
-            //write transformed content
+            //process using listener which could transform and flush new content
+            fullyMatching.process();
+            //write remaining content if any
             writeCustomBuffer(fullyMatching);
-            //flush if requested
-            if (result != null && result) {
-                flush();
-            }
             //reset all buffers
             resetBuffers();
         } else if (!partiallyMatching) {
@@ -131,26 +153,15 @@ public abstract class StreamDecoder {
     /**
      * Writes all the global buffer to the output and cleans it.
      */
-    protected void writeAllBuffer() throws IOException {
-        write(globalStringBuilder.toString());
+    public void writeAllBuffer() throws IOException {
+        matchingWriter.write(globalStringBuilder.toString());
         globalStringBuilder.setLength(0);
     }
 
     /**
-     * Subclasses should use this method to effectively write to the delegated object.
-     * @param buffer Content to be written.
-     */
-    protected abstract void write(String buffer) throws IOException;
-
-    /**
-     * Force flushing buffered content.
-     */
-    protected abstract void flush() throws IOException;
-
-    /**
      * Retrieves current buffer, for inspection
      */
-    protected StringBuilder currentBuffer() {
+    public StringBuilder currentBuffer() {
         return globalStringBuilder;
     }
 
@@ -158,129 +169,28 @@ public abstract class StreamDecoder {
      * Writes part from the beginning of the global buffer to the output, optionally deleting this part from the global buffer.
      * It'll be called when the beginning of the buffer is not relevant for any individual buffer anymore.
      */
-    private void writeBufferPartially(final int length, boolean delete) throws IOException {
-        write(globalStringBuilder.subSequence(0, length).toString());
+    protected void writeBufferPartially(final int length, boolean delete) throws IOException {
+        matchingWriter.write(globalStringBuilder.subSequence(0, length).toString());
         if (delete) globalStringBuilder.delete(0, length);
     }
 
     /**
      * Writes an individual buffer to the output.
      */
-    private void writeCustomBuffer(final MatchingBuffer matchingBuffer) throws IOException {
-        write(matchingBuffer.getMatchingString().toString());
+    protected void writeCustomBuffer(final MatchingBuffer matchingBuffer) throws IOException {
+        if (matchingBuffer.size() > 0) {
+            matchingWriter.write(matchingBuffer.content());
+        }
     }
 
     /**
      * Reset all buffers, inclusing the global buffer.
      */
-    private void resetBuffers() {
+    protected void resetBuffers() {
         for (int i = 0; i < buffersLength; i++) {
             buffers[i].reset();
         }
         globalStringBuilder.setLength(0);
     }
 
-    /**
-     * Buffer for a given pair of matcher and listener.
-     * Characters will be buffered while it matches the global buffer.
-     */
-    protected static class MatchingBuffer {
-        private final StreamMatcher streamMatcher;
-        private final StreamListener streamListener;
-        private final StringBuilder matchingString;
-
-        MatchingBuffer(StreamMatcher streamMatcher, StreamListener streamListener) {
-            this.streamMatcher = streamMatcher;
-            this.streamListener = streamListener;
-            this.matchingString = new StringBuilder();
-        }
-
-        /**
-         * Execute the matcher for the current buffer.
-         */
-        MatchingStatus matches() {
-            return streamMatcher.matches(matchingString);
-        }
-
-        /**
-         * Get current individual buffer.
-         */
-        StringBuilder getMatchingString() {
-            return matchingString;
-        }
-
-        /**
-         * Process listener using matched buffer.
-         */
-        Boolean process() {
-            return streamListener.process(matchingString);
-        }
-
-        /**
-         * Size of this individual buffer.
-         */
-        int size() {
-            return matchingString.length();
-        }
-
-        /**
-         * Reset this individual buffer.
-         */
-        void reset() {
-            matchingString.setLength(0);
-        }
-    }
-
-    /**
-     * Base builder class for decoders.
-     */
-    public static abstract class Builder<T> {
-        protected int bufferLimit;
-        protected List<StreamMatcher> matchers = new ArrayList<>();
-        protected List<StreamListener> listeners = new ArrayList<>();
-
-        /**
-         * Start building an instance of {@link StreamDecoderOutputStream} with required parameters.
-         * @param outputStream Delegated output where bytes will be eventually written.
-         * @param charset Encoding to decode characters. DOES NOT support BOM (Byte Order Mark).
-         */
-        public static Builder<StreamDecoderOutputStream> forOutputStream(OutputStream outputStream, Charset charset) {
-            return new StreamDecoderOutputStream.Builder(outputStream, charset);
-        }
-
-        /**
-         * Start building an instance of {@link StreamDecoderWriter} with required parameters.
-         * @param writer Delegated output where bytes will be eventually written.
-         */
-        public static Builder<StreamDecoderWriter> forWriter(Writer writer) {
-            return new StreamDecoderWriter.Builder(writer);
-        }
-
-
-        protected Builder() {
-            this.bufferLimit = 64;
-        }
-
-        /**
-         * Binds a matcher and a listener, i.e., when some content matches the corresponding listener will be executed.
-         */
-        public Builder<T> bind(StreamMatcher matcher, StreamListener listener) {
-            this.matchers.add(matcher);
-            this.listeners.add(listener);
-            return this;
-        }
-
-        /**
-         * Sets the maximum number of characters that will be stored in the buffers. Default is 64.
-         */
-        public Builder<T> bufferLimit(int bufferLimit) {
-            this.bufferLimit = bufferLimit;
-            return this;
-        }
-
-        /**
-         * Build an instance with the current settings.
-         */
-        public abstract T build();
-    }
 }

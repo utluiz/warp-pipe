@@ -24,6 +24,9 @@ import org.luizricardo.warppipe.decoder.StreamDecoderOutputStream;
  */
 public interface StreamMatcher {
 
+    /**
+     * Execute matcher's logic to determine whether it matches the buffer or not.
+     */
     MatchingStatus matches(StringBuilder stringBuilder);
 
 }

@@ -5,23 +5,20 @@ package org.luizricardo.warppipe.matcher;
  * Base class for HTML matching.
  * It does not process contents, but finishes when finds a '{@code >}' character.
  */
-public abstract class AbstractHtmlTagStreamMatcher implements StreamMatcher {
+public abstract class BaseHtmlTagStreamMatcher implements StreamMatcher {
 
     private final String tagName;
-    private final String initialText;
     private final int initialTextLength;
     private final TextStreamMatcher initialMatcher;
 
-    public AbstractHtmlTagStreamMatcher(final String tagName, final String initialText) {
+    public BaseHtmlTagStreamMatcher(final String tagName, final String initialText) {
         this.tagName = tagName;
-        this.initialText = initialText;
         this.initialTextLength = initialText.length();
-        this.initialMatcher = new TextStreamMatcher(initialText, false);
+        this.initialMatcher = TextStreamMatcher.forText(initialText, false);
     }
 
-
     @Override
-    public MatchingStatus matches(StringBuilder stringBuilder) {
+    public MatchingStatus matches(final StringBuilder stringBuilder) {
         if (stringBuilder.charAt(0) == '<') {
             final int length = stringBuilder.length();
             if (length == 1) {
@@ -29,7 +26,7 @@ public abstract class AbstractHtmlTagStreamMatcher implements StreamMatcher {
             } else if (length <= initialTextLength) {
                 return initialMatcher.matches(stringBuilder) == MatchingStatus.NONE ? MatchingStatus.NONE : MatchingStatus.PARTIALLY;
             } else if (stringBuilder.charAt(length - 1) == '>') {
-                return matchesTag(tagName, stringBuilder);
+                return matchesTag(stringBuilder);
             } else if (stringBuilder.charAt(length - 1) == '<') {
                 return MatchingStatus.FIRST;
             } else {
@@ -39,6 +36,14 @@ public abstract class AbstractHtmlTagStreamMatcher implements StreamMatcher {
         return MatchingStatus.NONE;
     }
 
-    protected abstract MatchingStatus matchesTag(String tagName, StringBuilder stringBuilder);
+    public String tagName() {
+        return tagName;
+    }
+
+    /**
+     * Implements matching for this tag when it should have a complete tag like {@code <...>}.
+     * @param stringBuilder tagContent
+     */
+    public abstract MatchingStatus matchesTag(final StringBuilder stringBuilder);
 
 }

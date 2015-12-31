@@ -11,7 +11,7 @@ import static org.luizricardo.warppipe.matcher.TextStreamMatcherTest.performAndA
 
 public class HtmlCloseTagStreamMatcherTest {
 
-    HtmlCloseTagStreamMatcher matcher = new HtmlCloseTagStreamMatcher("table");
+    HtmlCloseTagStreamMatcher matcher = HtmlCloseTagStreamMatcher.forTag("table");
 
     @Test
     public void matchSimple() {

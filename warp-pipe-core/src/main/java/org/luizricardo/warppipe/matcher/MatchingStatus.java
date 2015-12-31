@@ -4,6 +4,7 @@ package org.luizricardo.warppipe.matcher;
  * Status of a current stream matcher.
  */
 public enum MatchingStatus {
+
     /**
      * Does not match current buffer.
      */
@@ -20,4 +21,5 @@ public enum MatchingStatus {
      * Matcher fully matching the current buffer..
      */
     FULLY
+
 }

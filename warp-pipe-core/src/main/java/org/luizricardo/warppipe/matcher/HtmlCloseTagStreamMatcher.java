@@ -10,20 +10,28 @@ import java.util.List;
 /**
  * Matches closing tags like {@code </body>}.
  */
-public class HtmlCloseTagStreamMatcher extends AbstractHtmlTagStreamMatcher {
+public class HtmlCloseTagStreamMatcher extends BaseHtmlTagStreamMatcher {
 
-    public HtmlCloseTagStreamMatcher(String tagName) {
+    private HtmlCloseTagStreamMatcher(final String tagName) {
         super(tagName, "</" + tagName);
     }
 
+    /**
+     * Builds a {@link HtmlCloseTagStreamMatcher}.
+     */
+    public static HtmlCloseTagStreamMatcher forTag(final String tagName) {
+        return new HtmlCloseTagStreamMatcher(tagName);
+    }
+
     @Override
-    protected MatchingStatus matchesTag(final String tagName, final StringBuilder stringBuilder) {
+    public MatchingStatus matchesTag(final StringBuilder stringBuilder) {
         final Source source = new Source(stringBuilder);
         final List<Tag> all = source.getAllTags();
-        if (!all.isEmpty() && all.get(0).getName().equals(tagName) && all.get(0).getTagType() instanceof EndTagType) {
+        if (!all.isEmpty() && all.get(0).getName().equals(tagName()) && all.get(0).getTagType() instanceof EndTagType) {
             return MatchingStatus.FULLY;
         } else {
             return MatchingStatus.NONE;
         }
     }
+
 }

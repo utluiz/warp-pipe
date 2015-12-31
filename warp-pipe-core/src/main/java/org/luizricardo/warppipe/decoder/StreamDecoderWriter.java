@@ -1,6 +1,7 @@
 package org.luizricardo.warppipe.decoder;
 
 
+import org.luizricardo.warppipe.listener.MatchingWriter;
 import org.luizricardo.warppipe.listener.StreamListener;
 import org.luizricardo.warppipe.matcher.StreamMatcher;
 
@@ -36,17 +37,7 @@ public class StreamDecoderWriter extends Writer {
             final StreamListener[] listeners,
             final int bufferLimit) {
         this.writer = writer;
-        this.decoder = new StreamDecoder(matchers, listeners, bufferLimit) {
-            @Override
-            protected void write(String buffer) throws IOException {
-                writer.write(buffer);
-            }
-
-            @Override
-            protected void flush() throws IOException {
-                writer.flush();
-            }
-        };
+        this.decoder = new StreamDecoder(MatchingWriter.forWriter(writer), matchers, listeners, bufferLimit);
     }
 
     @Override
@@ -55,7 +46,7 @@ public class StreamDecoderWriter extends Writer {
     }
 
     @Override
-    public void write(char[] cbuf, int off, int len) throws IOException {
+    public void write(final char[] cbuf, final int off, final int len) throws IOException {
         for (int i = 0; i < len; i++) {
             write(cbuf[off + i]);
         }
@@ -78,21 +69,4 @@ public class StreamDecoderWriter extends Writer {
         writer.flush();
     }
 
-    /**
-     * Builder class for {@link StreamDecoderWriter}.
-     */
-    public static class Builder extends StreamDecoder.Builder<StreamDecoderWriter> {
-        private Writer writer;
-
-        protected Builder(Writer writer) {
-            this.writer = writer;
-        }
-
-        public StreamDecoderWriter build() {
-            return new StreamDecoderWriter(writer,
-                    matchers.toArray(new StreamMatcher[matchers.size()]),
-                    listeners.toArray(new StreamListener[listeners.size()]),
-                    bufferLimit);
-        }
-    }
 }
