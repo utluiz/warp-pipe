@@ -1,51 +1,66 @@
 package org.luizricardo.warppipe.pipeline;
 
+import org.luizricardo.warppipe.pipeline.step.StepData;
+import org.luizricardo.warppipe.pipeline.step.StepManager;
+
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
-import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import java.util.stream.Collectors;
 
 public class ConcurrentPipeline implements Pipeline {
 
-    private final List<Future<Optional<PipelineException>>> results;
-    private final ActionManager actionManager;
+    private final List<StepData> data;
+    private final StepManager stepManager;
     private final ExecutorService executorService;
 
-    public ConcurrentPipeline(final ActionManager actionManager, final int threadPoolSize) {
-        this.actionManager = actionManager;
+    public ConcurrentPipeline(final StepManager stepManager, final int threadPoolSize, final List<StepData> data) {
+        this.stepManager = stepManager;
         this.executorService = Executors.newFixedThreadPool(threadPoolSize);
-        this.results = new ArrayList<>();
+        this.data = data;
     }
 
-    public void add(PipelineItem item) {
-        results.add(executorService.submit(() -> {
-            try {
-                actionManager.execute(item);
-                return Optional.empty();
-            } catch (PipelineException e) {
-                //log
-                return Optional.of(e);
+    public static Builder<ConcurrentPipeline> create(final StepManager stepManager, final int threadPoolSize) {
+        return new Builder<ConcurrentPipeline>() {
+            private final List<StepData> data = new ArrayList<>();
+            @Override
+            public Builder<ConcurrentPipeline> include(StepData stepData) {
+                data.add(stepData);
+                return this;
             }
-        }));
+
+            @Override
+            public ConcurrentPipeline build() {
+                return new ConcurrentPipeline(stepManager, threadPoolSize, data);
+            }
+        };
     }
 
-    public void execute() {
-        for (Future<Optional<PipelineException>> future : results) {
-            try {
-                Optional<PipelineException> e = future.get();
-                if (e.isPresent()) {
-                    throw e.get();
+    @Override
+    public PipelineResult execute(final Context context) {
+        try {
+            final PipelineResult.Builder result = PipelineResult.builder();
+            executorService.invokeAll(data.stream().map(pipelineData -> (Callable<Void>) () -> {
+                try {
+                    stepManager.execute(pipelineData, context);
+                    synchronized (result) {
+                        result.success(pipelineData);
+                    }
+                } catch (PipelineException e) {
+                    synchronized (result) {
+                        result.error(pipelineData, e);
+                    }
                 }
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
-            } catch (ExecutionException e) {
-                throw new RuntimeException(e);
-            } catch (PipelineException e) {
-                throw new RuntimeException(e);
-            }
+                return null;
+            }).collect(Collectors.toList()));
+            return result.build();
+        } catch (InterruptedException e) {
+            //log
+            e.printStackTrace();
+            //TODO handle timeouts in a loop
+            throw new RuntimeException("InterruptedException", e);
         }
     }
 

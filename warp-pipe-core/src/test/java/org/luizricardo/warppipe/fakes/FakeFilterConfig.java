@@ -31,8 +31,8 @@ public class FakeFilterConfig implements FilterConfig {
         return Collections.enumeration(parameters.keySet());
     }
 
-    public FakeFilterConfig param(String value, String name) {
-        parameters.put(value, name);
+    public FakeFilterConfig param(String name, String value) {
+        parameters.put(name, value);
         return this;
     }
 

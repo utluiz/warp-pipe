@@ -15,7 +15,7 @@ import static org.junit.Assert.assertEquals;
 
 public class WarpFilterTest {
 
-    WarpFilter filter = new WarpFilter();
+    DefaultWarpFilter filter = new DefaultWarpFilter();
     FakeHttpServletRequest request = new FakeHttpServletRequest();
     FakeHttpServletResponse response = new FakeHttpServletResponse();
 
@@ -32,9 +32,9 @@ public class WarpFilterTest {
 
     @Test
     public void simpleHtmlFilter() throws Exception {
-        filter.init(new FakeFilterConfig().param("matchers", "org.luizricardo.warppipe.HiBodyMatcher"));
-        doFilterWithOutputStream("<body>bla</body>");
-        assertEquals("<body>bla<hi/></body>", new String(response.getOutput().toByteArray(), StandardCharsets.UTF_8));
+        filter.init(new FakeFilterConfig().param("steps", "text=org.luizricardo.warppipe.TextStep"));
+        doFilterWithOutputStream("<body>bla<placeholder id=\"text\"/></body>");
+        assertEquals("<body>bla <placeholder id=\"text\"/>NONE</body>", new String(response.getOutput().toByteArray(), StandardCharsets.UTF_8));
     }
 
     void doFilterWithOutputStream(final String content) throws Exception {

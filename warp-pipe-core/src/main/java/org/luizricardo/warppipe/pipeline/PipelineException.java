@@ -1,21 +1,24 @@
 package org.luizricardo.warppipe.pipeline;
 
 
+import org.luizricardo.warppipe.pipeline.step.StepData;
+
 public class PipelineException extends Exception {
 
-    private PipelineItem itemFailed;
+    private StepData itemFailed;
 
-    public PipelineException(String message, Throwable cause, PipelineItem itemFailed) {
+    public PipelineException(String message, Throwable cause, StepData itemFailed) {
         super(message, cause);
         this.itemFailed = itemFailed;
     }
 
-    public PipelineException(String message, PipelineItem itemFailed) {
+    public PipelineException(String message, StepData itemFailed) {
         super(message);
         this.itemFailed = itemFailed;
     }
 
-    public PipelineItem itemFailed() {
+    public StepData itemFailed() {
         return itemFailed;
     }
+
 }
