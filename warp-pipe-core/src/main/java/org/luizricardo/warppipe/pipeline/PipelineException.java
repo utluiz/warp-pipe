@@ -1,7 +1,7 @@
 package org.luizricardo.warppipe.pipeline;
 
 
-import org.luizricardo.warppipe.pipeline.step.StepData;
+import org.luizricardo.warppipe.api.StepData;
 
 public class PipelineException extends Exception {
 

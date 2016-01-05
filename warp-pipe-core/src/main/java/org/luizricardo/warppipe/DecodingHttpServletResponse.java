@@ -26,6 +26,8 @@ public class DecodingHttpServletResponse extends HttpServletResponseWrapper {
 
     private final Charset charset;
     private final Consumer<StreamDecoderBuilder> binderFunction;
+    private PrintWriter printWriter;
+    private ServletOutputStream servletOutputStream;
 
     /**
      * @param response Original servlet response
@@ -53,29 +55,35 @@ public class DecodingHttpServletResponse extends HttpServletResponseWrapper {
 
     @Override
     public PrintWriter getWriter() throws IOException {
-        return new PrintWriter(decorate(super.getWriter()));
+        if (printWriter == null) {
+            printWriter = new PrintWriter(decorate(super.getWriter()));
+        }
+        return printWriter;
     }
 
     @Override
     public ServletOutputStream getOutputStream() throws IOException {
-        final ServletOutputStream servletOutputStream = super.getOutputStream();
-        final OutputStream decoder = decorate(servletOutputStream);
-        return new ServletOutputStream() {
-            @Override
-            public boolean isReady() {
-                return servletOutputStream.isReady();
-            }
+        if (servletOutputStream == null) {
+            final ServletOutputStream wrappedServletOutputStream = super.getOutputStream();
+            final OutputStream decoder = decorate(wrappedServletOutputStream);
+            servletOutputStream = new ServletOutputStream() {
+                @Override
+                public boolean isReady() {
+                    return wrappedServletOutputStream.isReady();
+                }
 
-            @Override
-            public void setWriteListener(WriteListener writeListener) {
-                servletOutputStream.setWriteListener(writeListener);
-            }
+                @Override
+                public void setWriteListener(WriteListener writeListener) {
+                    wrappedServletOutputStream.setWriteListener(writeListener);
+                }
 
-            @Override
-            public void write(int b) throws IOException {
-                decoder.write(b);
-            }
-        };
+                @Override
+                public void write(int b) throws IOException {
+                    decoder.write(b);
+                }
+            };
+        }
+        return servletOutputStream;
     }
 
 }

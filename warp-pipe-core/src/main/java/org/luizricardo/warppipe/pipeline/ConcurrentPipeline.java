@@ -1,7 +1,10 @@
 package org.luizricardo.warppipe.pipeline;
 
-import org.luizricardo.warppipe.pipeline.step.StepData;
-import org.luizricardo.warppipe.pipeline.step.StepManager;
+import org.luizricardo.warppipe.api.Pipeline;
+import org.luizricardo.warppipe.api.PipelineResult;
+import org.luizricardo.warppipe.api.StepContext;
+import org.luizricardo.warppipe.api.StepData;
+import org.luizricardo.warppipe.api.StepManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +13,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
+/**
+ * Process {@link org.luizricardo.warppipe.api.Step}s concurrently using a {@link ExecutorService}.
+ */
 public class ConcurrentPipeline implements Pipeline {
 
     private final List<StepData> data;
@@ -39,7 +45,7 @@ public class ConcurrentPipeline implements Pipeline {
     }
 
     @Override
-    public PipelineResult execute(final Context context) {
+    public PipelineResult execute(final StepContext context) {
         try {
             final PipelineResult.Builder result = PipelineResult.builder();
             executorService.invokeAll(data.stream().map(pipelineData -> (Callable<Void>) () -> {

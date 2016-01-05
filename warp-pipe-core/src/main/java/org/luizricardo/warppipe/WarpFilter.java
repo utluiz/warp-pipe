@@ -1,14 +1,14 @@
 package org.luizricardo.warppipe;
 
 import net.htmlparser.jericho.StartTag;
+import org.luizricardo.warppipe.api.StepContext;
+import org.luizricardo.warppipe.api.StepManager;
 import org.luizricardo.warppipe.listener.MatchingContext;
 import org.luizricardo.warppipe.listener.StreamListener;
 import org.luizricardo.warppipe.matcher.HtmlCloseTagStreamMatcher;
 import org.luizricardo.warppipe.matcher.HtmlTagStreamMatcher;
-import org.luizricardo.warppipe.pipeline.Context;
-import org.luizricardo.warppipe.pipeline.step.StepData;
-import org.luizricardo.warppipe.pipeline.step.StepManager;
 import org.luizricardo.warppipe.pipeline.QueuedPipeline;
+import org.luizricardo.warppipe.api.StepData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,10 +41,10 @@ public class WarpFilter {
         this.closeBodyProcess = HtmlCloseTagStreamMatcher.forTag("body");
     }
 
-    private StepData buildPipelineItem(final MatchingContext content) {
-        final StartTag tag = placeholderMapping.findStartTag(content.content());
+    private StepData buildStepData(final MatchingContext matchingContext) {
+        final StartTag tag = placeholderMapping.findStartTag(matchingContext.content());
         if (tag != null) {
-            return new StepData(
+            return StepData.create(
                     tag.getAttributeValue("id"),
                     priority(tag.getAttributeValue("pipeline-priority")),
                     tag.getAttributes().populateMap(new HashMap<>(), true));
@@ -64,8 +64,8 @@ public class WarpFilter {
         return Optional.empty();
     }
 
-    private Context buildPipelineContext(final HttpServletRequest request, final MatchingContext context) {
-        return new Context(
+    private StepContext buildStepContext(final HttpServletRequest request, final MatchingContext context) {
+        return StepContext.create(
                 new BufferedWriter(
                         new Writer() {
                             @Override
@@ -97,11 +97,12 @@ public class WarpFilter {
                         builder.bind(closeHeadFlush, StreamListener.flushListener());
                     }
                     if (config.autoExecuteBeforeClosingBody()) {
-                        builder.bind(closeBodyProcess, context -> pipelineBuilder.build().execute(
-                                buildPipelineContext(request, context)));
+                        builder.bind(closeBodyProcess, matchingContext ->
+                                pipelineBuilder.build().execute(buildStepContext(request, matchingContext)));
                     }
                     if (config.autoDetectPlaceholders()) {
-                        builder.bind(placeholderMapping, context -> pipelineBuilder.include(buildPipelineItem(context)));
+                        builder.bind(placeholderMapping, matchingContext ->
+                                pipelineBuilder.include(buildStepData(matchingContext)));
                     }
                 });
         chain.doFilter(request, responseWrapper);

@@ -1,8 +1,8 @@
 package org.luizricardo.warppipe;
 
+import org.luizricardo.warppipe.api.Step;
+import org.luizricardo.warppipe.api.StepManager;
 import org.luizricardo.warppipe.pipeline.step.DefaultStepManager;
-import org.luizricardo.warppipe.pipeline.step.Step;
-import org.luizricardo.warppipe.pipeline.step.StepManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -21,7 +21,7 @@ import java.util.Map;
 
 public class DefaultWarpFilter implements Filter {
 
-    final static Logger logger = LoggerFactory.getLogger(DefaultWarpFilter.class);
+    private static Logger logger = LoggerFactory.getLogger(DefaultWarpFilter.class);
 
     private static WarpFilterConfiguration config;
     private static volatile WarpFilter warpFilter;
@@ -82,6 +82,9 @@ public class DefaultWarpFilter implements Filter {
 
     @Override
     public void destroy() {
+        config = null;
+        logger = null;
+        warpFilter = null;
     }
 
 }

@@ -1,6 +1,4 @@
-package org.luizricardo.warppipe.pipeline;
-
-import org.luizricardo.warppipe.pipeline.step.StepData;
+package org.luizricardo.warppipe.api;
 
 /**
  * Defines a chain of items to be processed in order fo fulfill the request.
@@ -11,8 +9,11 @@ public interface Pipeline {
      * Handles the processing of all items and returns when all are finished.
      * It does not mean the items cannot be already processed, but it's the last call.
      */
-    PipelineResult execute(Context context);
+    PipelineResult execute(StepContext context);
 
+    /**
+     * Builder template for implementations.
+     */
     interface Builder<T extends Pipeline> {
 
         /**
@@ -20,6 +21,9 @@ public interface Pipeline {
          */
         Builder<T> include(StepData stepData);
 
+        /**
+         * Builds the current pipeline.
+         */
         T build();
 
     }

@@ -140,7 +140,7 @@ public class FakeHttpServletResponse implements HttpServletResponse {
 
     @Override
     public PrintWriter getWriter() throws IOException {
-        throw new UnsupportedOperationException("Not implemented");
+        return new PrintWriter(outputStream, false);
     }
 
     @Override
